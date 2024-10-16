@@ -71,6 +71,9 @@ func compareFiles(fileToRemove, fileToKeep string, action string) error {
 				hasMoreToRemove = scannerToRemove.Scan()
 				if hasMoreToRemove {
 					entryToRemove = parseLine(scannerToRemove.Text())
+				} else {
+					// No more lines in fileToRemove, break to avoid infinite loop
+					break
 				}
 			}
 
