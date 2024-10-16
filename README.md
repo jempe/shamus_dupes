@@ -1,5 +1,4 @@
 # shamus_dupes
-# ============
 
 This is a utility to find duplicate files in a directory tree. It is written in Bash and golang. The Bash script creates a script that needs to be run in the directory tree to be checked. it creates a script that generates a text file with all the hashes sorted by hash. 
 
@@ -50,9 +49,6 @@ bash remove_duplicates.sh
 ```
 
 This will remove the duplicates from the FilesToRemove directory.
-
-
-```
 
 
 
