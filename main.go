@@ -24,74 +24,78 @@ func parseLine(line string) FileEntry {
 }
 
 // compareFiles reads two sorted files and prints shasums that match, along with their paths
-func compareFiles(file1, file2 string, action string) error {
-	f1, err := os.Open(file1)
+func compareFiles(fileToRemove, fileToKeep string, action string) error {
+	fToRemove, err := os.Open(fileToRemove)
 	if err != nil {
 		return err
 	}
-	defer f1.Close()
+	defer fToRemove.Close()
 
-	f2, err := os.Open(file2)
+	fToKeep, err := os.Open(fileToKeep)
 	if err != nil {
 		return err
 	}
-	defer f2.Close()
+	defer fToKeep.Close()
 
-	scanner1 := bufio.NewScanner(f1)
-	scanner2 := bufio.NewScanner(f2)
+	scannerToRemove := bufio.NewScanner(fToRemove)
+	scannerToKeep := bufio.NewScanner(fToKeep)
 
-	var entry1, entry2 FileEntry
+	var entryToRemove, entryToKeep FileEntry
 
 	// Initial scan of both files
-	hasMore1 := scanner1.Scan()
-	if hasMore1 {
-		entry1 = parseLine(scanner1.Text())
+	hasMoreToRemove := scannerToRemove.Scan()
+	if hasMoreToRemove {
+		entryToRemove = parseLine(scannerToRemove.Text())
 	}
 
-	hasMore2 := scanner2.Scan()
-	if hasMore2 {
-		entry2 = parseLine(scanner2.Text())
+	hasMoreToKeep := scannerToKeep.Scan()
+	if hasMoreToKeep {
+		entryToKeep = parseLine(scannerToKeep.Text())
 	}
 
 	// Iterate through both files, comparing shasums
-	for hasMore1 && hasMore2 {
-		if entry1.Shasum == entry2.Shasum {
-			if action == "duplicate" {
-				fmt.Printf("%s is a duplicate of %s\n", entry1.Path, entry2.Path)
-			} else if action == "remove" {
-				fmt.Printf("rm \"%s\"\n", entry1.Path)
+	for hasMoreToRemove && hasMoreToKeep {
+		if entryToRemove.Shasum == entryToKeep.Shasum {
+
+			// repeat until shasums don't match
+			for entryToRemove.Shasum == entryToKeep.Shasum {
+				if action == "duplicate" {
+					fmt.Printf("%s is a duplicate of %s\n", entryToRemove.Path, entryToKeep.Path)
+				} else if action == "remove" {
+					fmt.Printf("rm \"%s\"\n", entryToRemove.Path)
+				}
+
+				totalDuplicates++
+
+				// Move both scanners to the next line
+				hasMoreToRemove = scannerToRemove.Scan()
+				if hasMoreToRemove {
+					entryToRemove = parseLine(scannerToRemove.Text())
+				}
 			}
 
-			totalDuplicates++
-
-			// Move both scanners to the next line
-			hasMore1 = scanner1.Scan()
-			if hasMore1 {
-				entry1 = parseLine(scanner1.Text())
+			hasMoreToKeep = scannerToKeep.Scan()
+			if hasMoreToKeep {
+				entryToKeep = parseLine(scannerToKeep.Text())
 			}
-
-			hasMore2 = scanner2.Scan()
-			if hasMore2 {
-				entry2 = parseLine(scanner2.Text())
-			}
-		} else if entry1.Shasum < entry2.Shasum {
+		} else if entryToRemove.Shasum < entryToKeep.Shasum {
 			if action == "unique" {
-				fmt.Printf("%s is unique\n", entry1.Path)
+				fmt.Printf("%s is unique\n", entryToRemove.Path)
 			}
-			// Move file 1 forward
-			hasMore1 = scanner1.Scan()
-			if hasMore1 {
-				entry1 = parseLine(scanner1.Text())
+			// Move file ToRemove forward
+			hasMoreToRemove = scannerToRemove.Scan()
+			if hasMoreToRemove {
+				entryToRemove = parseLine(scannerToRemove.Text())
 			}
 		} else {
 			if action == "unique" {
-				fmt.Printf("%s is unique\n", entry2.Path)
+				fmt.Printf("%s is unique\n", entryToKeep.Path)
 			}
 
-			// Move file 2 forward
-			hasMore2 = scanner2.Scan()
-			if hasMore2 {
-				entry2 = parseLine(scanner2.Text())
+			// Move file ToKeep forward
+			hasMoreToKeep = scannerToKeep.Scan()
+			if hasMoreToKeep {
+				entryToKeep = parseLine(scannerToKeep.Text())
 			}
 		}
 	}
@@ -101,28 +105,32 @@ func compareFiles(file1, file2 string, action string) error {
 
 func main() {
 
-	if len(os.Args) < 3 {
-		fmt.Printf("Usage: %s <action> <file1> <file2>\n", os.Args[0])
+	if len(os.Args) < 4 {
+		fmt.Println("Before running the program, you need to generate the shasums of the files to compare using the create_shasums_script.sh script")
+		fmt.Printf("Usage: %s <action> <shasums_of_files_to_remove> <shasums_of_files_to_keep>\n", os.Args[0])
 		fmt.Println("The action can be 'duplicate', 'unique', 'remove'")
+		fmt.Println("duplicate: Find duplicate files")
+		fmt.Println("unique: Find unique files")
+		fmt.Println("remove: Create script to remove duplicates")
 		return
 	}
 
 	action := os.Args[1]
-	file1 := os.Args[2]
-	file2 := os.Args[3]
+	filesToRemove := os.Args[2]
+	filesToKeep := os.Args[3]
 
 	if action == "unique" {
-		fmt.Println("Unique files")
+		fmt.Println("#Find unique files")
 	} else if action == "duplicate" {
-		fmt.Println("Duplicate files")
+		fmt.Println("#Find duplicate files")
 	} else if action == "remove" {
-		fmt.Println("Remove duplicates")
+		fmt.Println("#Create script to remove duplicates")
 	} else {
-		fmt.Println("Invalid action")
+		fmt.Println("#Invalid action")
 		return
 	}
 
-	err := compareFiles(file1, file2, action)
+	err := compareFiles(filesToRemove, filesToKeep, action)
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
